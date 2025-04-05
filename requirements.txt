@@ -1,4 +1,10 @@
-flask
-pandas
-scikit-learn
-surprise
+Flask==2.2.3
+pandas==1.5.3
+scikit-surprise==1.1.1
+confluent-kafka==2.1.0
+coverage==6.5.0
+pytest==7.2.1
+unittest==3.10
+pytest-cov
+pytest-mock
+pytest-flask

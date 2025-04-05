@@ -4,9 +4,12 @@ import pandas as pd
 from surprise import Dataset, Reader
 import time
 from confluent_kafka import Producer
+from multiprocessing import Process
+import monitoring.logger as logger
 
 app = Flask(__name__)
-
+app.config['TESTING'] = True  # Habilita el modo de pruebas
+app.config['DEBUG'] = False 
 # Configurar el Productor de Kafka
 KAFKA_TOPIC = "recommendationsNew"
 KAFKA_BROKER = "localhost:9092"  # Cambiar si Kafka está en otro host
@@ -49,4 +52,7 @@ def recomendar(user_id):
         return str(e), 500
 
 if __name__ == "__main__":
+    # Lanzar el logger como proceso paralelo
+    #p = Process(target=logger.iniciar_logger)
+    #p.start()
     app.run(host="0.0.0.0", port=8082)
