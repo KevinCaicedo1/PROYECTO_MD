@@ -1,58 +1,47 @@
 pipeline {
-    agent any
+    agent any  // Puedes usar cualquier agente aquí
 
     environment {
-        // Definir variables de entorno si es necesario, como tu entorno de Python
-        VENV_DIR = "env"
+        VIRTUAL_ENV = 'venv'  // Nombre del entorno virtual
     }
 
     stages {
-        stage('Preparación del entorno') {
+        stage('Install Python and Dependencies') {
             steps {
                 script {
-                    // Crear y activar un entorno virtual
-                    sh 'python -m venv $VENV_DIR'
-                    sh './$VENV_DIR/Scripts/activate' // Para sistemas Windows, ajusta la ruta en Linux/Mac
+                    // Verificar que la imagen de Docker tiene Python instalado
+                    echo 'Verificando la versión de Python...'
+                    sh 'python3 --version'
+
+                    // Crear entorno virtual y activar
+                    echo 'Creando y activando el entorno virtual...'
+                    sh 'python3 -m venv ${VIRTUAL_ENV}'
+                    sh 'source ${VIRTUAL_ENV}/bin/activate'
+
+                    // Instalar dependencias desde requirements.txt
+                    echo 'Instalando dependencias...'
+                    sh './${VIRTUAL_ENV}/bin/pip install -r requirements.txt'
                 }
             }
         }
 
-        stage('Instalación de dependencias') {
+        stage('Run Tests') {
             steps {
-                // Instalar las dependencias del proyecto
                 script {
-                    sh './$VENV_DIR/Scripts/activate && pip install -r requirements.txt'
+                    echo 'Ejecutando pruebas unitarias...'
+                    // Ejecutar las pruebas, si tienes un archivo de pruebas configurado
+                    sh './${VIRTUAL_ENV}/bin/python -m unittest discover -s test'
                 }
             }
         }
 
-        stage('Ejecutar pruebas unitarias') {
+        stage('Deploy') {
             steps {
                 script {
-                    // Ejecutar las pruebas con pytest
-                    sh './$VENV_DIR/Scripts/activate && pytest --maxfail=1 --disable-warnings -q'
-                }
-            }
-        }
-
-        stage('Generar cobertura de pruebas') {
-            steps {
-                script {
-                    // Generar la cobertura de las pruebas
-                    sh './$VENV_DIR/Scripts/activate && pytest --maxfail=1 --disable-warnings -q --cov=app --cov-report=html'
-                }
-            }
-        }
-
-        stage('Desplegar en entorno de producción') {
-            when {
-                branch 'main' // Ejecutar solo si estamos en la rama principal
-            }
-            steps {
-                script {
-                    // Aquí puedes colocar los pasos para el despliegue en producción (si es necesario)
-                    echo "Desplegando aplicación..."
-                    // Aquí puedes poner un comando como `docker build` o `docker-compose` si tu aplicación está en contenedores Docker
+                    // Puedes agregar aquí los pasos de despliegue o continuar con otros pasos de tu pipeline
+                    echo 'Desplegando aplicación...'
+                    // Por ejemplo, si necesitas lanzar la aplicación Flask
+                    sh './${VIRTUAL_ENV}/bin/python app.py'
                 }
             }
         }
@@ -60,18 +49,9 @@ pipeline {
 
     post {
         always {
-            // Pasos que deben ejecutarse siempre al final del pipeline (por ejemplo, limpieza)
-            echo 'El pipeline ha terminado.'
-        }
-
-        success {
-            // Pasos que deben ejecutarse solo si todo el pipeline fue exitoso
-            echo 'Pipeline ejecutado con éxito.'
-        }
-
-        failure {
-            // Pasos que deben ejecutarse solo si el pipeline falló
-            echo 'Hubo un error en el pipeline.'
+            echo 'Limpieza después del pipeline'
+            // Puedes realizar tareas de limpieza si es necesario
+            sh 'deactivate'
         }
     }
 }
