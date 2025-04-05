@@ -55,12 +55,14 @@ pipeline {
 
                 export PATH="$CONDA_DIR/bin:$PATH"
                 eval "$($CONDA_DIR/bin/conda shell.bash hook)"
-
                 conda activate $ENV_NAME
 
-                # Instalar paquetes necesarios
+                # Instalar dependencias con conda
                 conda install -n $ENV_NAME -y pandas flask scikit-learn
-                conda install -n $ENV_NAME -c conda-forge -y surprise confluent-kafka
+
+                # Instalar dependencias específicas con pip (más confiable para estos paquetes)
+                conda run -n $ENV_NAME pip install scikit-surprise confluent-kafka
+
                 echo '✅ Dependencies installed.'
                 '''
             }
@@ -73,10 +75,8 @@ pipeline {
 
                 export PATH="$CONDA_DIR/bin:$PATH"
                 eval "$($CONDA_DIR/bin/conda shell.bash hook)"
-
                 conda activate $ENV_NAME
 
-                # Ejecutar la API Flask (puerto 8082 según tu script)
                 nohup python app.py &
 
                 echo '✅ Flask API started.'
