@@ -1,58 +1,86 @@
 pipeline {
     agent any
 
+    environment {
+        CONDA_DIR = "$HOME/miniconda3"
+        ENV_NAME = "ml_env"
+    }
+
     stages {
-        stage('Install Python') {
+        stage('Install Miniconda') {
             steps {
-                script {
-                    echo 'Instalando Python desde el código fuente...'
+                sh '''#!/bin/bash -e
+                echo '🔧 Installing Miniconda...'
 
-                    // Descargar el código fuente de Python
-                    sh 'wget https://www.python.org/ftp/python/3.9.6/Python-3.9.6.tgz'
+                export PATH="$CONDA_DIR/bin:$PATH"
 
-                    // Extraer el archivo
-                    sh 'tar -xzf Python-3.9.6.tgz'
+                if [ ! -d "$CONDA_DIR" ]; then
+                    echo '🚀 Downloading and installing Miniconda...'
+                    curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
+                    bash miniconda.sh -b -p $CONDA_DIR
+                    rm miniconda.sh
+                    echo '✅ Miniconda installed successfully!'
+                else
+                    echo '✅ Miniconda is already installed.'
+                fi
 
-                    // Compilar Python
-                    sh 'cd Python-3.9.6 && ./configure --prefix=$HOME/python && make && make install'
+                eval "$($CONDA_DIR/bin/conda shell.bash hook)"
+                conda init bash
+                '''
+            }
+        }
 
-                    // Agregar el directorio de binarios a la variable de entorno PATH
-                    sh 'export PATH=$HOME/python/bin:$PATH'
+        stage('Create Conda Environment') {
+            steps {
+                sh '''#!/bin/bash -e
+                echo '🌱 Creating and activating Conda environment...'
 
-                    // Verificar la instalación
-                    sh '$HOME/python/bin/python3 --version'
-                }
+                export PATH="$CONDA_DIR/bin:$PATH"
+                eval "$($CONDA_DIR/bin/conda shell.bash hook)"
+
+                if ! conda env list | grep -q "$ENV_NAME"; then
+                    conda create -n $ENV_NAME python=3.8 -y
+                    echo '✅ Conda environment created!'
+                else
+                    echo '✅ Conda environment already exists.'
+                fi
+                '''
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                script {
-                    echo 'Creando y activando el entorno virtual...'
-                    sh '$HOME/python/bin/python3 -m venv venv'
-                    sh 'source venv/bin/activate'
+                sh '''#!/bin/bash -e
+                echo '📦 Installing project dependencies...'
 
-                    echo 'Instalando dependencias...'
-                    sh 'pip install -r requirements.txt'
-                }
+                export PATH="$CONDA_DIR/bin:$PATH"
+                eval "$($CONDA_DIR/bin/conda shell.bash hook)"
+
+                conda activate $ENV_NAME
+
+                # Instalar paquetes necesarios
+                conda install -n $ENV_NAME -y pandas flask scikit-learn
+                conda install -n $ENV_NAME -c conda-forge -y surprise confluent-kafka
+                echo '✅ Dependencies installed.'
+                '''
             }
         }
 
-        stage('Run Tests') {
+        stage('Run Flask API') {
             steps {
-                script {
-                    echo 'Ejecutando pruebas unitarias...'
-                    sh 'python3 -m unittest discover -s test'
-                }
-            }
-        }
+                sh '''#!/bin/bash -e
+                echo '🚀 Starting Flask application...'
 
-        stage('Deploy') {
-            steps {
-                script {
-                    echo 'Desplegando aplicación...'
-                    sh 'python app.py'
-                }
+                export PATH="$CONDA_DIR/bin:$PATH"
+                eval "$($CONDA_DIR/bin/conda shell.bash hook)"
+
+                conda activate $ENV_NAME
+
+                # Ejecutar la API Flask (puerto 8082 según tu script)
+                nohup python app.py &
+
+                echo '✅ Flask API started.'
+                '''
             }
         }
     }
