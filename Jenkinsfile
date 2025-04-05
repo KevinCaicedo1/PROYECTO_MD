@@ -15,13 +15,9 @@ pipeline {
                 export PATH="$CONDA_DIR/bin:$PATH"
 
                 if [ ! -d "$CONDA_DIR" ]; then
-                    echo '🚀 Downloading and installing Miniconda...'
                     curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
                     bash miniconda.sh -b -p $CONDA_DIR
                     rm miniconda.sh
-                    echo '✅ Miniconda installed successfully!'
-                else
-                    echo '✅ Miniconda is already installed.'
                 fi
 
                 eval "$($CONDA_DIR/bin/conda shell.bash hook)"
@@ -33,16 +29,11 @@ pipeline {
         stage('Create Conda Environment') {
             steps {
                 sh '''#!/bin/bash -e
-                echo '🌱 Creating and activating Conda environment...'
-
                 export PATH="$CONDA_DIR/bin:$PATH"
                 eval "$($CONDA_DIR/bin/conda shell.bash hook)"
 
                 if ! conda env list | grep -q "$ENV_NAME"; then
                     conda create -n $ENV_NAME python=3.8 -y
-                    echo '✅ Conda environment created!'
-                else
-                    echo '✅ Conda environment already exists.'
                 fi
                 '''
             }
@@ -51,19 +42,21 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh '''#!/bin/bash -e
-                echo '📦 Installing project dependencies...'
+                echo '📦 Installing dependencies including compilers...'
 
                 export PATH="$CONDA_DIR/bin:$PATH"
                 eval "$($CONDA_DIR/bin/conda shell.bash hook)"
                 conda activate $ENV_NAME
 
-                # Instalar dependencias con conda
+                # Herramientas para compilar scikit-surprise
+                conda install -n $ENV_NAME -y cmake make gcc_linux-64 gxx_linux-64
+
+                # Dependencias del proyecto
                 conda install -n $ENV_NAME -y pandas flask scikit-learn
 
-                # Instalar dependencias específicas con pip (más confiable para estos paquetes)
+                # Usar pip para confluent-kafka y scikit-surprise
+                conda run -n $ENV_NAME pip install --upgrade pip
                 conda run -n $ENV_NAME pip install scikit-surprise confluent-kafka
-
-                echo '✅ Dependencies installed.'
                 '''
             }
         }
@@ -71,15 +64,13 @@ pipeline {
         stage('Run Flask API') {
             steps {
                 sh '''#!/bin/bash -e
-                echo '🚀 Starting Flask application...'
+                echo '🚀 Running Flask app...'
 
                 export PATH="$CONDA_DIR/bin:$PATH"
                 eval "$($CONDA_DIR/bin/conda shell.bash hook)"
                 conda activate $ENV_NAME
 
                 nohup python app.py &
-
-                echo '✅ Flask API started.'
                 '''
             }
         }
