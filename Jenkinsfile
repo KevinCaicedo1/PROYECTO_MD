@@ -6,19 +6,40 @@ pipeline {
     }
 
     stages {
-        stage('Install Python and Dependencies') {
+        stage('Install Python') {
             steps {
                 script {
-                    // Verificar que la imagen de Docker tiene Python instalado
-                    echo 'Verificando la versión de Python...'
-                    sh 'python3 --version'
+                    echo 'Verificando si Python está instalado...'
+                    
+                    // Comprobamos si Python está instalado
+                    def pythonCheck = sh(script: 'python3 --version', returnStatus: true)
+                    
+                    // Si Python no está instalado, instalamos desde una fuente
+                    if (pythonCheck != 0) {
+                        echo 'Python no está instalado. Instalando Python...'
 
-                    // Crear entorno virtual y activar
+                        // Actualizamos los paquetes
+                        sh 'apt-get update -y'
+                        
+                        // Instalar Python 3 y las herramientas necesarias
+                        sh 'apt-get install -y python3 python3-pip python3-venv'
+                    } else {
+                        echo 'Python ya está instalado.'
+                    }
+
+                    // Verificar la instalación de Python
+                    sh 'python3 --version'
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                script {
                     echo 'Creando y activando el entorno virtual...'
                     sh 'python3 -m venv ${VIRTUAL_ENV}'
                     sh 'source ${VIRTUAL_ENV}/bin/activate'
 
-                    // Instalar dependencias desde requirements.txt
                     echo 'Instalando dependencias...'
                     sh './${VIRTUAL_ENV}/bin/pip install -r requirements.txt'
                 }
@@ -29,7 +50,6 @@ pipeline {
             steps {
                 script {
                     echo 'Ejecutando pruebas unitarias...'
-                    // Ejecutar las pruebas, si tienes un archivo de pruebas configurado
                     sh './${VIRTUAL_ENV}/bin/python -m unittest discover -s test'
                 }
             }
@@ -38,7 +58,6 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Puedes agregar aquí los pasos de despliegue o continuar con otros pasos de tu pipeline
                     echo 'Desplegando aplicación...'
                     // Por ejemplo, si necesitas lanzar la aplicación Flask
                     sh './${VIRTUAL_ENV}/bin/python app.py'
@@ -50,7 +69,6 @@ pipeline {
     post {
         always {
             echo 'Limpieza después del pipeline'
-            // Puedes realizar tareas de limpieza si es necesario
             sh 'deactivate'
         }
     }
